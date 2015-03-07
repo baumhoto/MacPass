@@ -74,11 +74,13 @@ NSString *const _MPTableSecurCellView = @"PasswordCell";
   MPEntryContextMenuDelegate *_menuDelegate;
   BOOL _isDisplayingContextBar;
   BOOL _didUnlock;
+  long _previousRow;
 }
 
 @property (strong) NSArrayController *entryArrayController;
 @property (strong) MPContextBarViewController *contextBarViewController;
 @property (strong) NSArray *filteredEntries;
+
 
 @property (weak) IBOutlet NSTableView *entryTable;
 
@@ -119,6 +121,7 @@ NSString *const _MPTableSecurCellView = @"PasswordCell";
     _menuDelegate = [[MPEntryContextMenuDelegate alloc] init];
     _contextBarViewController = [[MPContextBarViewController alloc] init];
     [self _updateExpirationDisplay];
+    _previousRow = -1;
   }
   return self;
 }
@@ -732,6 +735,18 @@ NSString *const _MPTableSecurCellView = @"PasswordCell";
       NSLog(@"Unknown double click URL action");
       break;
   }
+}
+
+- (void)keyUp:(NSEvent *)event
+{
+  //NSLog(@"selectedRow: %ld", (long)[[self entryTable] selectedRow]);
+  unichar key = [[event charactersIgnoringModifiers] characterAtIndex:0];
+  if ((key == 0xf700) && _previousRow == 0
+      && [[self entryTable] selectedRow] == 0 ) {
+    MPDocumentWindowController* windowController = (MPDocumentWindowController*)self.windowController;
+    [[[self windowController] window] makeFirstResponder: windowController.searchField];
+  }
+  _previousRow = (long)[[self entryTable] selectedRow];
 }
 
 #pragma mark periodic UI Update
