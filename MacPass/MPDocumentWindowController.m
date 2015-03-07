@@ -134,7 +134,21 @@ typedef void (^MPPasswordChangedBlock)(BOOL didChangePassword);
 }
 
 - (NSSearchField *)searchField {
+  self.toolbarDelegate.searchField.delegate = self;
   return self.toolbarDelegate.searchField;
+}
+
+-(BOOL)control:(NSControl*)control textView:(NSTextView*)textView doCommandBySelector:(SEL)commandSelector {
+  
+  BOOL result = NO;
+  if(commandSelector == @selector(moveDown:)) {
+    [[self.searchField window] makeKeyAndOrderFront:self];
+    NSIndexSet *indexSet = [NSIndexSet indexSetWithIndex:0];
+    [[_entryViewController entryTable] selectRowIndexes:indexSet byExtendingSelection:NO];
+    [[self window] makeFirstResponder:[_entryViewController entryTable]];
+    result = YES;
+  }
+  return result;
 }
 
 - (void)_setContentViewController:(MPViewController *)viewController {

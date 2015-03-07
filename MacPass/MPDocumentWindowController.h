@@ -17,7 +17,7 @@
 @class MPOutlineViewController;
 @class MPToolbarDelegate;
 
-@interface MPDocumentWindowController : NSWindowController <MPPasswordEditWindowDelegate>
+@interface MPDocumentWindowController : NSWindowController <MPPasswordEditWindowDelegate, NSTextFieldDelegate>
 
 @property (readonly, strong) MPPasswordInputController *passwordInputController;
 @property (readonly, strong) MPEntryViewController *entryViewController;
