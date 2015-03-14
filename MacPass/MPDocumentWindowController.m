@@ -23,10 +23,14 @@
 #import "MPPasswordInputController.h"
 #import "MPSettingsHelper.h"
 #import "MPToolbarDelegate.h"
+#import "DDHotKeyCenter.h"
 
 #import "KPKCompositeKey.h"
 #import "KPKEntry.h"
 #import "KPKTree.h"
+
+#import "NSString+Commands.h"
+
 
 typedef NS_ENUM(NSUInteger, MPAlertContext) {
   MPAlertLossySaveWarning,
@@ -72,8 +76,60 @@ typedef void (^MPPasswordChangedBlock)(BOOL didChangePassword);
     _entryViewController = [[MPEntryViewController alloc] init];
     _inspectorViewController = [[MPInspectorViewController alloc] init];
     _documentWindowDelegate = [[MPDocumentWindowDelegate alloc] init];
+    [self registerGlobalHotkeys];
   }
   return self;
+}
+
+-(int) registerGlobalHotkeys{
+  DDHotKeyCenter *c = [DDHotKeyCenter sharedHotKeyCenter];
+
+  // Control+Alt+B = Copy Username
+  if (![c registerHotKeyWithKeyCode: 8 modifierFlags:( NSAlternateKeyMask | NSControlKeyMask) target:self action:@selector(hotkeyWithEvent:object:) object:@"password"])
+  {
+    NSLog(@"Unable to register password hotkey", nil);
+  } else {
+    NSLog(@"Registered password hotkey");
+  }
+  
+  // Control+Alt+C = Copy Password
+  if (![c registerHotKeyWithKeyCode: 11 modifierFlags:( NSAlternateKeyMask | NSControlKeyMask) target:self action:@selector(hotkeyWithEvent:object:) object:@"user"])
+  {
+    NSLog(@"Unable to register user hotkey", nil);
+  } else {
+    NSLog(@"Registered user hotkey");
+  }
+  
+  // Control+Alt+U = Copy Url
+  if (![c registerHotKeyWithKeyCode: 32 modifierFlags:( NSAlternateKeyMask | NSControlKeyMask) target:self action:@selector(hotkeyWithEvent:object:) object:@"url"])
+  {
+    NSLog(@"Unable to register url hotkey", nil);
+  } else {
+    NSLog(@"Registered url hotkey");
+  }
+  
+  return 0;
+}
+
+- (void) hotkeyWithEvent:(NSEvent *)hkEvent object:(id)anObject {
+  NSString *action = [NSString stringWithFormat:@"%@", anObject];
+  
+  if([action isEqualToString:@"user"])
+  {
+    [[self entryViewController] copyUsername:nil];
+  }
+  else if([action isEqualToString:@"password"])
+  {
+    [[self entryViewController] copyPassword:nil];
+  }
+  else if([action isEqualToString:@"url"])
+  {
+    [[self entryViewController] copyURL:nil];
+  }
+  else
+  {
+     NSLog(@"Unkown hotkey action %@", action);
+  }
 }
 
 - (void)dealloc {
