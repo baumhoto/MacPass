@@ -32,7 +32,7 @@
 #import "MPIconHelper.h"
 
 #import "MPDocumentWindowController.h"
-#import "MPDocument+Search.h"
+#import "MPDocument.h"
 
 NSString *const MPToolbarItemLock = @"TOOLBAR_LOCK";
 NSString *const MPToolbarItemAddGroup = @"TOOLBAR_ADD_GROUP";
@@ -296,7 +296,7 @@ NSString *const MPToolbarItemCopyPassword = @"TOOLBAR_COPY_PASSWORD";
   if(_displayModeBeforeSearch == NSToolbarDisplayModeLabelOnly) {
     [self.toolbar setDisplayMode:NSToolbarDisplayModeIconAndLabel];
   }
-  /* only make the searchfield first responder if it's not aleady in an active search */
+  /* only make the searchfield first responder if it's not already in an active search */
   if(![self.searchField currentEditor]) {
     [[self.searchField window] makeFirstResponder:self.searchField];
     [self.searchField selectText:self];

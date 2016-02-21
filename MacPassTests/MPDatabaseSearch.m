@@ -8,10 +8,7 @@
 
 #import <Cocoa/Cocoa.h>
 #import <XCTest/XCTest.h>
-
-#import "KPKTree.h"
-#import "KPKGroup.h"
-#import "KPKEntry.h"
+#import <KeePassKit/KeePassKit.h>
 
 @interface MPDatabaseSearch : XCTestCase
 
@@ -43,9 +40,16 @@
   self.entry1 = [self.tree createEntry:self.includedGroup];
   self.entry2 = [self.tree createEntry:self.inheritingGroup];
   self.entry3 = [self.tree createEntry:self.excludedGroup];
+
+  
   self.entry1.title = @"entry1";
+  self.entry1.url = @"www.url1.com";
+  
   self.entry2.title = @"entry2";
+  self.entry2.url = @"www.url1.com";
+  
   self.entry3.title = @"entry3";
+  self.entry3.url = @"www.url1.com";
 }
 
 - (void)tearDown {
@@ -54,6 +58,7 @@
 }
 
 - (void)testSearch {
+  XCTFail(@"Missing Test");
 }
 
 @end

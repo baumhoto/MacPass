@@ -10,7 +10,7 @@
 
 #import <Quartz/Quartz.h>
 
-@class HNHRoundedSecureTextField;
+@class HNHUIRoundedSecureTextField;
 @class MPDocument;
 
 @interface MPEntryInspectorViewController : MPViewController <NSPopoverDelegate, QLPreviewPanelDelegate>
@@ -18,7 +18,7 @@
 @property (weak) IBOutlet NSTextField *titleTextField;
 @property (weak) IBOutlet NSTextField *usernameTextField;
 @property (weak) IBOutlet NSTextField *URLTextField;
-@property (weak) IBOutlet HNHRoundedSecureTextField *passwordTextField;
+@property (weak) IBOutlet HNHUIRoundedSecureTextField *passwordTextField;
 
 @property (weak) IBOutlet NSTextField *uuidTextField;
 
@@ -53,7 +53,7 @@
 @property (weak) IBOutlet NSTextField *associationSequenceTextField;
 
 - (void)setupBindings:(MPDocument *)document;
-- (void)regsiterNotificationsForDocument:(MPDocument *)document;
+- (void)registerNotificationsForDocument:(MPDocument *)document;
 
 - (IBAction)saveAttachment:(id)sender;
 - (IBAction)addAttachment:(id)sender;
@@ -69,6 +69,5 @@
 
 - (void)beginEditing;
 - (void)endEditing;
-
 
 @end

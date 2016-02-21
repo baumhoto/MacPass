@@ -17,16 +17,10 @@
 #import "MPOutlineContextMenuDelegate.h"
 #import "MPOutlineDataSource.h"
 
-#import "KPKEntry.h"
-#import "KPKGroup.h"
-#import "KPKMetaData.h"
-#import "KPKNode.h"
+#import "KeePassKit/KeePassKit.h"
 #import "KPKNode+IconImage.h"
-#import "KPKTimeInfo.h"
-#import "KPKTree.h"
-#import "KPKUTIs.h"
 
-#import "HNHGradientView.h"
+#import "HNHUi/HNHUi.h"
 
 #define EXPIRED_GROUP_REFRESH_SECONDS 60
 
@@ -45,7 +39,6 @@ NSString *const _MPOutlinveViewHeaderViewIdentifier = @"HeaderCell";
 
 @property (strong) NSTreeController *treeController;
 @property (strong) MPOutlineDataSource *datasource;
-@property (strong) NSMenu *menu;
 
 @property (copy, nonatomic) NSString *databaseNameWrapper;
 
@@ -72,6 +65,8 @@ NSString *const _MPOutlinveViewHeaderViewIdentifier = @"HeaderCell";
 }
 
 - (void)dealloc {
+  [self.outlineView unbind:NSContentBinding];
+  [self.treeController unbind:NSContentBinding];
   [[NSNotificationCenter defaultCenter] removeObserver:self];
   [self.outlineView setDelegate:nil];
 }
@@ -109,8 +104,6 @@ NSString *const _MPOutlinveViewHeaderViewIdentifier = @"HeaderCell";
     [self bind:NSStringFromSelector(@selector(databaseNameWrapper)) toObject:document.tree.metaData withKeyPath:NSStringFromSelector(@selector(databaseName)) options:nil];
     [_outlineView setDataSource:self.datasource];
     _bindingEstablished = YES;
-    [self _updateExpirationDisplay];
-    
   }
   NSTreeNode *node = [_outlineView itemAtRow:0];
   [self _expandItems:node];
@@ -166,7 +159,8 @@ NSString *const _MPOutlinveViewHeaderViewIdentifier = @"HeaderCell";
 
 - (void)clearSelection {
   [_outlineView deselectAll:nil];
-  [self outlineViewSelectionDidChange:nil];
+  NSNotification *notification = [NSNotification notificationWithName:NSOutlineViewSelectionDidChangeNotification object:_outlineView];
+  [self outlineViewSelectionDidChange:notification];
 }
 
 - (void)_didBecomeFirstResponder:(NSNotification *)notification {
@@ -214,13 +208,16 @@ NSString *const _MPOutlinveViewHeaderViewIdentifier = @"HeaderCell";
     [view.textField bind:NSValueBinding toObject:self  withKeyPath:NSStringFromSelector(@selector(databaseNameWrapper)) options:nil];
   }
   else {
-    KPKGroup *group = [item representedObject];
     view = [outlineView makeViewWithIdentifier:_MPOutlineViewDataViewIdentifier owner:self];
     
-    [[view imageView] bind:NSValueBinding toObject:group withKeyPath:NSStringFromSelector(@selector(iconImage)) options:nil];
-    [[view textField] bind:NSValueBinding toObject:group withKeyPath:NSStringFromSelector(@selector(name)) options:nil];
-    NSString *entriesCountKeyPath = [[NSString alloc] initWithFormat:@"%@.%@", NSStringFromSelector(@selector(entries)), @"@count"];
-    [[view textField] bind:NSStringFromSelector(@selector(count)) toObject:group withKeyPath:entriesCountKeyPath options:nil];
+    NSString *iconImageKeyPath = [NSString stringWithFormat:@"%@.%@", NSStringFromSelector(@selector(representedObject)), NSStringFromSelector(@selector(iconImage))];
+    NSString *titleKeyPath = [NSString stringWithFormat:@"%@.%@", NSStringFromSelector(@selector(representedObject)), NSStringFromSelector(@selector(title))];
+    [[view imageView] bind:NSValueBinding toObject:item withKeyPath:iconImageKeyPath options:nil];
+    [[view textField] bind:NSValueBinding toObject:item withKeyPath:titleKeyPath options:nil];
+    
+    
+    NSString *entriesCountKeyPath = [[NSString alloc] initWithFormat:@"%@.%@.%@", NSStringFromSelector(@selector(representedObject)), NSStringFromSelector(@selector(entries)), @"@count"];
+    [[view textField] bind:NSStringFromSelector(@selector(count)) toObject:item withKeyPath:entriesCountKeyPath options:nil];
   }
   
   return view;
@@ -267,7 +264,8 @@ NSString *const _MPOutlinveViewHeaderViewIdentifier = @"HeaderCell";
 - (void)outlineView:(NSOutlineView *)outlineView didRemoveRowView:(NSTableRowView *)rowView forRow:(NSInteger)row {
   /* Deletion of an item */
   if(row == -1) {
-    [self outlineViewSelectionDidChange:nil];
+    NSNotification *notification = [NSNotification notificationWithName:NSOutlineViewSelectionDidChangeNotification object:outlineView];
+    [self outlineViewSelectionDidChange:notification];
   }
 }
 
@@ -277,14 +275,8 @@ NSString *const _MPOutlinveViewHeaderViewIdentifier = @"HeaderCell";
   if(![document validateUserInterfaceItem:menuItem]) {
     return NO;
   }
-  id selected = [[self currentTargetNode] asGroup];
-  if(!selected) {
-    return NO;
-  }
-  if(selected == document.trash) {
-    return NO;
-  }
-  return ![document isItemTrashed:selected];
+  KPKGroup *group = [self currentTargetNode].asGroup;
+  return group.isTrash && group.isTrashed;
 }
 
 - (NSMenu *)_contextMenu {
@@ -296,15 +288,6 @@ NSString *const _MPOutlinveViewHeaderViewIdentifier = @"HeaderCell";
 - (BOOL)_itemIsRootNode:(id)item {
   id node = [item representedObject];
   return [node isKindOfClass:[KPKTree class]];
-}
-
-- (void)_updateExpirationDisplay {
-  MPDocument *document = [[self windowController] document];
-  [document.root.timeInfo isExpired];
-  [[document.tree allGroups] enumerateObjectsUsingBlock:^(id obj, NSUInteger idx, BOOL *stop) {
-    [[obj timeInfo] isExpired];
-  }];
-  [self performSelector:@selector(_updateExpirationDisplay) withObject:nil afterDelay:EXPIRED_GROUP_REFRESH_SECONDS];
 }
 
 @end

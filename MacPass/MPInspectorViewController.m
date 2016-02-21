@@ -7,27 +7,22 @@
 //
 
 #import "MPInspectorViewController.h"
-#import "MPIconHelper.h"
+#import "MPDatePickingViewController.h"
+#import "MPDocument.h"
 #import "MPEntryInspectorViewController.h"
 #import "MPGroupInspectorViewController.h"
-#import "MPDocument.h"
-#import "MPNotifications.h"
+#import "MPIconHelper.h"
 #import "MPIconSelectViewController.h"
-#import "MPDatePickingViewController.h"
-
-#import "NSDate+Humanized.h"
-#import "KPKNode+IconImage.h"
-
-#import "KPKTree.h"
-#import "KPKMetaData.h"
-#import "KPKGroup.h"
-#import "KPKEntry.h"
-#import "KPKNode.h"
-#import "KPKTimeInfo.h"
-
-#import "HNHGradientView.h"
+#import "MPNotifications.h"
 #import "MPPopupImageView.h"
 
+#import "KeePassKit/KeePassKit.h"
+
+#import "KPKNode+IconImage.h"
+
+#import "HNHUi/HNHUi.h"
+
+#import "NSDate+Humanized.h"
 
 typedef NS_ENUM(NSUInteger, MPContentTab) {
   MPEntryTab,
@@ -52,6 +47,8 @@ typedef NS_ENUM(NSUInteger, MPContentTab) {
 @property (weak) IBOutlet NSSplitView *splitView;
 @property (unsafe_unretained) IBOutlet NSTextView *notesTextView;
 
+@property (strong) NSObjectController *nodeController;
+
 @end
 
 @implementation MPInspectorViewController
@@ -66,6 +63,7 @@ typedef NS_ENUM(NSUInteger, MPContentTab) {
     self.activeTab = MPEmptyTab;
     self.entryViewController = [[MPEntryInspectorViewController alloc] init];
     self.groupViewController = [[MPGroupInspectorViewController alloc] init];
+    self.nodeController = [[NSObjectController alloc] init];
   }
   return self;
 }
@@ -75,18 +73,18 @@ typedef NS_ENUM(NSUInteger, MPContentTab) {
 }
 
 - (NSResponder *)reconmendedFirstResponder {
-  return [self view];
+  return self.view;
 }
 
 - (void)awakeFromNib {
-  [self.bottomBar setBorderType:HNHBorderTop|HNHBorderHighlight];
-    
-  [[self.noSelectionInfo cell] setBackgroundStyle:NSBackgroundStyleRaised];
-  [[self.itemImageView cell] setBackgroundStyle:NSBackgroundStyleRaised];
-  [self.tabView bind:NSSelectedIndexBinding toObject:self withKeyPath:@"activeTab" options:nil];
+  self.bottomBar.borderType = (HNHBorderTop|HNHBorderHighlight);
   
-  NSView *entryView = [self.entryViewController view];
-  NSView *groupView = [self.groupViewController view];
+  self.noSelectionInfo.cell.backgroundStyle = NSBackgroundStyleRaised;
+  self.itemImageView.cell.backgroundStyle = NSBackgroundStyleRaised;
+  [self.tabView bind:NSSelectedIndexBinding toObject:self withKeyPath:NSStringFromSelector(@selector(activeTab)) options:nil];
+  
+  NSView *entryView = self.entryViewController.view;
+  NSView *groupView = self.groupViewController.view;
   
   
   NSTabViewItem *entryTabItem = [self.tabView tabViewItemAtIndex:MPEntryTab];
@@ -104,17 +102,26 @@ typedef NS_ENUM(NSUInteger, MPContentTab) {
   [groupTabView addConstraints:[NSLayoutConstraint constraintsWithVisualFormat:@"V:|[groupView]|" options:0 metrics:nil views:views]];
   [groupTabItem setInitialFirstResponder:groupView];
   
-  [[self view] layout];
-  [self _updateBindings:nil];
+  [self.view layout];
+  
+  /* Init edit and cancel buttons */
+  self.editButton.action = @selector(beginEditing:);
+  self.cancelEditButton.action = @selector(cancelEditing:);
+  self.cancelEditButton.hidden = YES;
+  
+  [self _toggleEditors:NO];
 }
 
-- (void)regsiterNotificationsForDocument:(MPDocument *)document {
+- (void)registerNotificationsForDocument:(MPDocument *)document {
   [[NSNotificationCenter defaultCenter] addObserver:self
                                            selector:@selector(_didChangeCurrentItem:)
                                                name:MPDocumentCurrentItemChangedNotification
                                              object:document];
+  [self.entryViewController registerNotificationsForDocument:document];
   
-  [self.entryViewController regsiterNotificationsForDocument:document];
+  
+  [self.nodeController bind:NSContentBinding toObject:document withKeyPath:NSStringFromSelector(@selector(selectedItem)) options:nil];
+  [self _establishBindings];
   
   [self.entryViewController setupBindings:document];
   [self.groupViewController setupBindings:document];
@@ -160,39 +167,6 @@ typedef NS_ENUM(NSUInteger, MPContentTab) {
   
   [self.modifiedTextField setStringValue:[NSString stringWithFormat:modifedAtTemplate, modificationString]];
   [self.createdTextField setStringValue:[NSString stringWithFormat:createdAtTemplate, creationString]];
-  
-}
-
-#pragma mark -
-#pragma mark Click Edit Button
-- (void)toggleEdit:(id)sender {
-  BOOL didCancel = sender == self.cancelEditButton;
-  MPDocument *document = [[self windowController] document];
-  
-  if(document.selectedItem) {
-    
-    /* TODO UndoManager handling */
-    [self.editButton setTitle:NSLocalizedString(@"EDIT_ITEM", "")];
-    [self.cancelEditButton setHidden:YES];
-    [self.entryViewController endEditing];
-    
-    /*
-     We need to be carefull to only undo the things we actually changed
-     otherwise we undo older actions
-     */
-    if(didCancel) {
-      
-    }
-    else {
-      
-    }
-  }
-  else {
-    //[document.selectedItem beginEditSession];
-    [self.editButton setTitle:NSLocalizedString(@"SAVE_CHANGES", "")];
-    [self.cancelEditButton setHidden:NO];
-    [self.entryViewController beginEditing];
-  }
 }
 
 #pragma mark -
@@ -224,8 +198,8 @@ typedef NS_ENUM(NSUInteger, MPContentTab) {
   MPDatePickingViewController *controller = [[MPDatePickingViewController alloc] init];
   controller.popover = self.popover;
   MPDocument *document = self.windowController.document;
-  if(document.selectedItem.timeInfo.expiryTime) {
-    controller.date = document.selectedItem.timeInfo.expiryTime;
+  if(document.selectedItem.timeInfo.expirationDate) {
+    controller.date = document.selectedItem.timeInfo.expirationDate;
   }
   self.popover.contentViewController = controller;
   [self.popover showRelativeToRect:NSZeroRect ofView:sender preferredEdge:NSMinYEdge];
@@ -267,67 +241,68 @@ typedef NS_ENUM(NSUInteger, MPContentTab) {
 
 - (void)_setExpiryDate:(NSDate *)date {
   MPDocument *document = [[self windowController] document];
-  document.selectedItem.timeInfo.expiryTime = date;
+  document.selectedItem.timeInfo.expirationDate = date;
 }
 
 #pragma mark -
 #pragma mark Bindings
-- (void)_updateBindings:(id)item {
-  if(!item) {
-    [self.itemNameTextField unbind:NSValueBinding];
-    [self.itemNameTextField unbind:NSEnabledBinding];
-    [self.itemNameTextField setHidden:YES];
-    [self.itemImageView unbind:NSValueBinding];
-    [self.itemImageView unbind:NSEnabledBinding];
-    [self.itemImageView setHidden:YES];
-    [[self.notesTextView enclosingScrollView] setHidden:YES];
-    [self.notesTextView unbind:NSValueBinding];
-    [self.notesTextView unbind:NSEditableBinding];
-    [self.notesTextView setString:@""];
-    return;
-  }
+- (void)_establishBindings {
   
-  /* Disable if item is not editable */
-  [self.itemNameTextField bind:NSEnabledBinding toObject:item withKeyPath:NSStringFromSelector(@selector(isEditable)) options:nil];
-  [self.itemImageView bind:NSEnabledBinding toObject:item withKeyPath:NSStringFromSelector(@selector(isEditable)) options:nil];
-  [self.notesTextView bind:NSEditableBinding toObject:item withKeyPath:NSStringFromSelector(@selector(isEditable)) options:nil];
-  
-  [self.itemImageView bind:NSValueBinding toObject:item withKeyPath:NSStringFromSelector(@selector(iconImage)) options:nil];
-  [[self.notesTextView enclosingScrollView] setHidden:NO];
-  [self.notesTextView bind:NSValueBinding toObject:item withKeyPath:NSStringFromSelector(@selector(notes)) options:nil];
-  if([item respondsToSelector:@selector(title)]) {
-    [self.itemNameTextField bind:NSValueBinding toObject:item withKeyPath:NSStringFromSelector(@selector(title)) options:nil];
-  }
-  else if( [item respondsToSelector:@selector(name)]) {
-    [self.itemNameTextField bind:NSValueBinding toObject:item withKeyPath:NSStringFromSelector(@selector(name)) options:nil];
-  }
-  [self.itemImageView setHidden:NO];
-  [self.itemNameTextField setHidden:NO];
+  [self.itemImageView bind:NSValueBinding
+                  toObject:self.nodeController
+               withKeyPath:[NSString stringWithFormat:@"%@.%@", NSStringFromSelector(@selector(content)), NSStringFromSelector(@selector(iconImage))]
+                   options:nil];
+  [self.notesTextView bind:NSValueBinding
+                  toObject:self.nodeController
+               withKeyPath:[NSString stringWithFormat:@"%@.%@", NSStringFromSelector(@selector(content)), NSStringFromSelector(@selector(notes))]
+                   options:@{ NSNullPlaceholderBindingOption: NSLocalizedString(@"NONE", "")}];
+  [self.itemNameTextField bind:NSValueBinding
+                      toObject:self.nodeController
+                   withKeyPath:[NSString stringWithFormat:@"%@.%@", NSStringFromSelector(@selector(content)), NSStringFromSelector(@selector(title))]
+                       options:@{NSNullPlaceholderBindingOption: NSLocalizedString(@"NONE", "")}];
 }
 
-
+#pragma mark -
+#pragma mark Editing
+- (void)_toggleEditors:(BOOL)editable {
+  self.itemImageView.enabled = editable;
+  self.itemNameTextField.enabled = editable;
+  self.itemImageView.enabled = editable;
+  self.notesTextView.editable = editable;
+}
 #pragma mark -
 #pragma mark MPDocument Notifications
 
 - (void)_didChangeCurrentItem:(NSNotification *)notification {
-  MPDocument *document = [notification object];
-  if(!document.selectedItem) {
-    /* show emty tab and hide edit button */
-    self.activeTab = MPEmptyTab;
+  MPDocument *document = notification.object;
+  if(document.selectedItem.asGroup) {
+    self.activeTab = MPGroupTab;
+  }
+  else if(document.selectedItem.asEntry) {
+    self.activeTab = MPEntryTab;
   }
   else {
-    BOOL isGroup = document.selectedItem == document.selectedGroup;
-    BOOL isEntry = document.selectedItem == document.selectedEntry;
-    if(isGroup) {
-      self.activeTab = MPGroupTab;
-    }
-    else if(isEntry) {
-      self.activeTab = MPEntryTab;
-    }
+    self.activeTab = MPEmptyTab;
   }
-  [self _updateBindings:document.selectedItem];
   
-  /* disable the entry text fields whenever the entry selection changes */
-  //[self.entryViewController endEditing];
+  [self _establishBindings];
+}
+
+- (IBAction)beginEditing:(id)sender {
+  self.editButton.action = @selector(commitEditing:);
+  self.editButton.title = NSLocalizedString(@"SAVE", "");
+  self.cancelEditButton.hidden = NO;
+  [self _toggleEditors:YES];
+}
+
+- (IBAction)cancelEditing:(id)sender {
+  self.editButton.title = NSLocalizedString(@"EDIT", "");
+  self.cancelEditButton.hidden = YES;
+  self.editButton.action = @selector(beginEditing:);
+  [self _toggleEditors:NO];
+}
+
+- (IBAction)commitEditing:(id)sender {
+  [self cancelEditing:sender];
 }
 @end

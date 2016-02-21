@@ -7,9 +7,9 @@
 //
 
 #import <XCTest/XCTest.h>
+#import <KeePassKit/KeePassKit.h>
 
 #import "MPDocument.h"
-#import "KPKTree.h"
 
 @interface MPDatabaseLoading : XCTestCase
 

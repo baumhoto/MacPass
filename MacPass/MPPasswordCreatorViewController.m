@@ -13,7 +13,8 @@
 #import "MPSettingsHelper.h"
 
 #import "MPFlagsHelper.h"
-#import "KPKEntry.h"
+
+#import "KeePassKit/KeePassKit.h"
 
 /*
  
@@ -23,7 +24,7 @@
  56 - 85 Excellent
  85 - Fantastic
  
- Skale 0-90
+ Scale 0-90
  */
 typedef NS_ENUM(NSUInteger, MPPasswordRating) {
   MPPasswordTerrible = 10,
@@ -148,20 +149,24 @@ typedef NS_ENUM(NSUInteger, MPPasswordRating) {
 #pragma mark Actions
 
 - (IBAction)_generatePassword:(id)sender {
-  if(self.useCustomString) {
-    if([[self.customCharactersTextField stringValue] length] > 0) {
-      self.password = [self.customCharactersTextField.stringValue passwordWithLength:self.passwordLength];
+  self.password = [NSString passwordWithCharactersets:self.characterFlags
+                                 withCustomCharacters:self._customCharacters
+                                               length:self.passwordLength];
+}
+
+- (NSString*)_customCharacters{
+  if(self.useCustomString && [[self.customCharactersTextField stringValue] length] > 0) {
+      return self.customCharactersTextField.stringValue;
     }
-  }
-  else {
-    self.password = [NSString passwordWithCharactersets:self.characterFlags length:self.passwordLength];
-  }
+    else{
+      return @"";
+    }
+  
 }
 
 - (IBAction)_toggleCharacters:(id)sender {
   self.setDefaultButton.enabled = YES;
   self.characterFlags ^= [sender tag];
-  self.useCustomString = NO;
   [self reset];
 }
 
@@ -201,7 +206,7 @@ typedef NS_ENUM(NSUInteger, MPPasswordRating) {
     [[NSUserDefaults standardUserDefaults] setObject:[self.customCharactersTextField stringValue] forKey:kMPSettingsKeyPasswordCustomString];
   }
   else {
-    NSLog(@"Cannot set password generator defaults. Inconsitent state. Aborting.");
+    NSLog(@"Cannot set password generator defaults. Inconsistent state. Aborting.");
   }
   self.setDefaultButton.enabled = NO;
 }
@@ -321,15 +326,10 @@ typedef NS_ENUM(NSUInteger, MPPasswordRating) {
   if(self.useCustomString) {
     self.customButton.state = NSOnState;
   }
-  self.customCharactersTextField.stringValue = self.customString;
   self.customCharactersTextField.enabled = self.useCustomString;
-  self.upperCaseButton.enabled = !self.useCustomString;
-  self.lowerCaseButton.enabled = !self.useCustomString;
-  self.numbersButton.enabled = !self.useCustomString;
-  self.symbolsButton.enabled = !self.useCustomString;
   
   /* Set to defaults, if we got nothing */
-  if(self.characterFlags == 0) {
+  if(self.characterFlags == 0 && !self.useCustomString) {
     self.characterFlags = MPPasswordCharactersAll;
   }
   

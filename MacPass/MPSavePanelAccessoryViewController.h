@@ -7,14 +7,14 @@
 //
 
 #import "MPViewController.h"
-#import "KPKVersion.h"
+#import "KeePassKit/KeePassKit.h"
 
 @class MPDocument;
 
 @interface MPSavePanelAccessoryViewController : MPViewController
 
-@property (nonatomic, assign) NSSavePanel *savePanel;
-@property (nonatomic, assign) MPDocument *document;
+@property (nonatomic, weak) NSSavePanel *savePanel;
+@property (nonatomic, weak) MPDocument *document;
 @property (nonatomic, assign, readonly) KPKVersion selectedVersion;
 
 @property (nonatomic, weak) IBOutlet NSPopUpButton *fileTypePopupButton;

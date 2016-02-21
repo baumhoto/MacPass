@@ -8,12 +8,12 @@
 
 #import "MPViewController.h"
 
-@class HNHGradientView;
+@class HNHUIGradientView;
 @class MPPopupImageView;
 
 @interface MPInspectorViewController : MPViewController <NSPopoverDelegate>
 
-@property (weak) IBOutlet HNHGradientView *bottomBar;
+@property (weak) IBOutlet HNHUIGradientView *bottomBar;
 @property (weak) IBOutlet NSTextField *createdTextField;
 @property (weak) IBOutlet NSTextField *modifiedTextField;
 @property (weak) IBOutlet NSTextField *noSelectionInfo;
@@ -24,9 +24,8 @@
 
 - (IBAction)pickIcon:(id)sender;
 - (IBAction)pickExpiryDate:(id)sender;
-- (IBAction)toggleEdit:(id)sender;
 
-/* Seperate call to ensure alle registered objects are in place */
-- (void)regsiterNotificationsForDocument:(NSDocument *)document;
+/* Separate call to ensure all registered objects are in place */
+- (void)registerNotificationsForDocument:(NSDocument *)document;
 
 @end

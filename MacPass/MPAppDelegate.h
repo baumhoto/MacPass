@@ -30,21 +30,21 @@ APPKIT_EXTERN NSString *const MPDidChangeStoredKeyFilesSettings;
 
 @property (strong) IBOutlet NSWindow *passwordCreatorWindow;
 @property (strong) IBOutlet NSWindow *welcomeWindow;
-@property (strong) MPAutotypeDaemon *autotypeDaemon;
 @property (weak) IBOutlet NSMenuItem *saveMenuItem;
+
 @property (nonatomic, assign) BOOL isAllowedToStoreKeyFile;
 
 - (IBAction)showPreferences:(id)sender;
 - (IBAction)showPasswordCreator:(id)sender;
 - (IBAction)createNewDatabase:(id)sender;
 - (IBAction)openDatabase:(id)sender;
+- (IBAction)showHelp:(id)sender;
 /**
  *  Clears the stored key files for any documents.
  *  @param sender sender of this action
  */
 - (IBAction)clearRememberdKeyFiles:(id)sender;
 
-- (NSString *)applicationName;
 - (void)lockAllDocuments;
 
 @end

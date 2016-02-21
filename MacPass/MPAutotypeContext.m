@@ -8,10 +8,7 @@
 
 #import "MPAutotypeContext.h"
 
-#import "KPKAutotype.h"
-#import "KPKEntry.h"
-#import "KPKWindowAssociation.h"
-#import "NSString+Commands.h"
+#import "KeePassKit/KeePassKit.h"
 
 @interface MPAutotypeContext () {
   NSString *_evaluatedCommand;
@@ -36,7 +33,7 @@
   if(self) {
     _command = [sequence copy];
     _entry = entry;
-    _normalizedCommand = [[sequence normalizedAutotypeSequence] copy];
+    _normalizedCommand = sequence.normalizedAutotypeSequence;
   }
   return self;
 }
@@ -47,7 +44,7 @@
 }
 
 
-- (BOOL)isValid {
+- (BOOL)valid {
   return (self.normalizedCommand != nil);
 }
 
@@ -56,6 +53,15 @@
     _evaluatedCommand = [[self.normalizedCommand finalValueForEntry:self.entry] copy];
   }
   return _evaluatedCommand;
+}
+
+- (NSString *)description {
+  return [NSString stringWithFormat:@"command:%@\nnormalized:%@\nevaluated:%@\nentry.title:%@\nentry.uuid:%@\n",
+          self.command,
+          self.normalizedCommand,
+          self.evaluatedCommand,
+          self.entry.title,
+          self.entry.uuid.UUIDString];
 }
 
 @end

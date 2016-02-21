@@ -21,7 +21,7 @@
 //
 
 #import <Cocoa/Cocoa.h>
-#import "KPKVersion.h"
+#import <KeePassKit/KeePassKit.h>
 #import "MPEntrySearchContext.h"
 #import "MPTargetNodeResolving.h"
 
@@ -45,8 +45,6 @@ APPKIT_EXTERN NSString *const MPDocumentDidUnlockDatabaseNotification;
 
 APPKIT_EXTERN NSString *const MPDocumentCurrentItemChangedNotification;
 
-APPKIT_EXTERN NSString *const MPDocumentWillSaveNotification;
-
 /* Keys used in userInfo NSDictionaries on notifications */
 APPKIT_EXTERN NSString *const MPDocumentEntryKey;
 APPKIT_EXTERN NSString *const MPDocumentGroupKey;
@@ -58,10 +56,9 @@ APPKIT_EXTERN NSString *const MPDocumentGroupKey;
 @class KPKAttribute;
 @class KPKCompositeKey;
 @class KPKNode;
-@class MPEditSession;
+@class KPKEditingSession;
 
 @interface MPDocument : NSDocument <MPTargetNodeResolving>
-
 
 @property (nonatomic, readonly, assign) BOOL encrypted;
 @property (nonatomic, readonly, assign) NSUInteger unlockCount; // Amount of times the Document was unlocked;
@@ -69,7 +66,6 @@ APPKIT_EXTERN NSString *const MPDocumentGroupKey;
 @property (strong, readonly, nonatomic) KPKTree *tree;
 @property (nonatomic, weak, readonly) KPKGroup *root;
 @property (nonatomic, weak) KPKGroup *trash;
-@property (nonatomic, readonly) BOOL useTrash;
 @property (nonatomic, weak) KPKGroup *templates;
 
 @property (nonatomic, strong, readonly) KPKCompositeKey *compositeKey;
@@ -89,12 +85,7 @@ APPKIT_EXTERN NSString *const MPDocumentGroupKey;
  */
 @property (nonatomic, readonly) BOOL hasSearch;
 @property (nonatomic, copy) MPEntrySearchContext *searchContext;
-@property (nonatomic, strong) NSArray *searchResult;
-
-/*
- Editing Session
- */
-@property (nonatomic, strong) MPEditSession *editingSession;
+@property (nonatomic, strong, readonly) NSArray *searchResult;
 
 + (KPKVersion)versionForFileType:(NSString *)fileType;
 + (NSString *)fileTypeForVersion:(KPKVersion)version;
@@ -102,9 +93,9 @@ APPKIT_EXTERN NSString *const MPDocumentGroupKey;
 #pragma mark Lock/Decrypt
 - (IBAction)lockDatabase:(id)sender;
 /**
- *  Decrypts the databse with the given password and keyfile
+ *  Decrypts the database with the given password and keyfile
  *
- *  @param password   The password to unlock the db with, can be nil. This is not the same as an empty stirng @""
+ *  @param password   The password to unlock the db with, can be nil. This is not the same as an empty string @""
  *  @param keyFileURL URL for the keyfile to use, can be nil
  *  @param error  Pointer to an NSError pointer of error reporting.
  *
@@ -112,7 +103,7 @@ APPKIT_EXTERN NSString *const MPDocumentGroupKey;
  */
 - (BOOL)unlockWithPassword:(NSString *)password keyFileURL:(NSURL *)keyFileURL error:(NSError *__autoreleasing*)error;
 /**
- *  Changes the password of the database. Some sanity checks are applied and the change is aborted if the new values arent valid
+ *  Changes the password of the database. Some sanity checks are applied and the change is aborted if the new values aren't valid
  *
  *  @param password   new password, can be nil
  *  @param keyFileURL new key URL can be nil
@@ -133,7 +124,7 @@ APPKIT_EXTERN NSString *const MPDocumentGroupKey;
 /**
  *  Finds an entry with the given UUID. If none is found, nil is returned
  *  @param uuid The UUID for the searched Entry
- *  @return enty, matching the UUID, nil if none was found
+ *  @return entry, matching the UUID, nil if none was found
  */
 - (KPKEntry *)findEntry:(NSUUID *)uuid;
 /**
@@ -148,15 +139,6 @@ APPKIT_EXTERN NSString *const MPDocumentGroupKey;
 - (BOOL)shouldRecommendPasswordChange;
 - (BOOL)shouldEnforcePasswordChange;
 
-/**
- *  Determines, whether the given item is inside the trash.
- *  The trash group itself is not considered as trashed.
- *  Hence when sending this message with the trash group as item, NO is returned
- *  @param item Item to test if trashed or not
- *  @return YES, if the item is inside the trash, NO otherwise (and if item is trash group)
- */
-- (BOOL)isItemTrashed:(id)item;
-
 - (void)writeXMLToURL:(NSURL *)url;
 - (void)readXMLfromURL:(NSURL *)url;
 
@@ -166,12 +148,10 @@ APPKIT_EXTERN NSString *const MPDocumentGroupKey;
 - (KPKAttribute *)createCustomAttribute:(KPKEntry *)entry;
 
 - (void)deleteNode:(KPKNode *)node;
-- (void)deleteGroup:(KPKGroup *)group;
-- (void)deleteEntry:(KPKEntry *)entry;
 
 #pragma mark Actions
 /**
- *  Empties the Trash group. Removing all Groups and Entries inside. This aciton is not undoable
+ *  Empties the Trash group. Removing all Groups and Entries inside. This action is not undo-able
  *  @param sender sender
  */
 - (IBAction)emptyTrash:(id)sender;
@@ -187,3 +167,106 @@ APPKIT_EXTERN NSString *const MPDocumentGroupKey;
 - (IBAction)duplicateEntryWithOptions:(id)sender;
 
 @end
+
+@interface MPDocument (Attachments)
+
+- (void)addAttachment:(NSURL *)location toEntry:(KPKEntry *)anEntry;
+
+@end
+
+#pragma mark -
+#pragma mark Autotype
+
+@interface MPDocument (Autotype)
+
+/**
+ *  Tests the given item for a possible wrong autotype format
+ *  MacPass 0.4 and 0.4.1 did store wrong Autotype sequences and thus mangled database files
+ *
+ *  @param item Item to test for malformation. Allowed Items are KPKNode, KPKEntry, KPKGroup and KPKAutotype
+ *
+ *  @return YES if the given item is considered a possible candiate. NO in all other cases
+ */
++ (BOOL)isCandidateForMalformedAutotype:(id)item;
+
+/**
+ *  Returns an NSArray containing all Autotype Contexts that match the given window title.
+ *  If no entry is set, all entries in the document will be searched
+ *
+ *  @param windowTitle Window title to search matches for
+ *  @param entry       Entry to use for lookup. If nil lookup will be performed in complete document
+ *
+ *  @return NSArray of MPAutotypeContext objects matching the window title.
+ */
+- (NSArray *)autotypContextsForWindowTitle:(NSString *)windowTitle preferredEntry:(KPKEntry *)entryOrNil;
+/**
+ *  Checks if the document has malformed autotype items
+ *
+ *  @return YES if any malformed items are found
+ */
+- (BOOL)hasMalformedAutotypeItems;
+
+- (NSArray *)malformedAutotypeItems;
+
+@end
+
+#pragma mark -
+#pragma mark Edit Sessiong
+
+APPKIT_EXTERN NSString *const MPDocumentDidBeginEditingSelectedItem;
+APPKIT_EXTERN NSString *const MPDocumentDidCancelChangesToSelectedItem;
+APPKIT_EXTERN NSString *const MPDocumentDidCommitChangesToSelectedItem;
+
+@interface MPDocument (EditingSession)
+
+#pragma mark Edit Actions
+- (IBAction)beginEditingSelectedItem:(id)sender;
+- (IBAction)cancelChangesToSelectedItem:(id)sender;
+- (IBAction)commitChangesToSelectedItem:(id)sender;
+
+@end
+
+
+#pragma mark -
+#pragma mark History Browsing
+
+FOUNDATION_EXPORT NSString *const MPDocumentDidEnterHistoryNotification;
+FOUNDATION_EXPORT NSString *const MPDocumentDidExitHistoryNotification;
+
+@interface MPDocument (HistoryBrowsing)
+
+- (IBAction)showHistory:(id)sender;
+- (IBAction)exitHistory:(id)sender;
+
+@end
+
+#pragma mark -
+#pragma mark Search
+
+FOUNDATION_EXTERN NSString *const MPDocumentDidEnterSearchNotification;
+FOUNDATION_EXTERN NSString *const MPDocumentDidChangeSearchFlags;
+FOUNDATION_EXTERN NSString *const MPDocumentDidExitSearchNotification;
+/**
+ *  Posted by the document, when the search results have been updated. This is only called when searching.
+ *  If the search is exited, it will be notified by MPDocumentDidExitSearchNotification
+ *  The userInfo dictionary has one key kMPDocumentSearchResultsKey with an NSArray of KPKEntries matching the search.
+ */
+FOUNDATION_EXTERN NSString *const MPDocumentDidChangeSearchResults;
+
+/* keys used in userInfo dictionaries on notifications */
+FOUNDATION_EXTERN NSString *const kMPDocumentSearchResultsKey;
+
+@interface MPDocument (Search)
+
+- (void)enterSearchWithContext:(MPEntrySearchContext *)context;
+
+/* Should be called by the NSSearchTextField to update the search string */
+- (IBAction)updateSearch:(id)sender;
+/* exits searching mode */
+- (IBAction)exitSearch:(id)sender;
+/* called by the filter toggle buttons */
+- (IBAction)toggleSearchFlags:(id)sender;
+
+@end
+
+

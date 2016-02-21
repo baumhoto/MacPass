@@ -16,14 +16,9 @@
 #import "MPAutotypeContext.h"
 #import "MPKeyMapper.h"
 
-#import "KPKEntry.h"
-#import "KPKAutotype.h"
-#import "KPKAutotypeCommands.h"
-
-#import "NSString+Commands.h"
+#import "KeePassKit/KeePassKit.h"
 
 #import <Carbon/Carbon.h>
-
 #import <CommonCrypto/CommonCrypto.h>
 
 static CGKeyCode kMPFunctionKeyCodes[] = { kVK_F1, kVK_F2, kVK_F3, kVK_F4, kVK_F5, kVK_F6, kVK_F7, kVK_F8, kVK_F9, kVK_F10, kVK_F11, kVK_F12, kVK_F13, kVK_F14, kVK_F15, kVK_F16, kVK_F17, kVK_F18, kVK_F19 };
@@ -101,15 +96,15 @@ static CGKeyCode kMPFunctionKeyCodes[] = { kVK_F1, kVK_F2, kVK_F3, kVK_F4, kVK_F
 }
 
 + (NSArray *)commandsForContext:(MPAutotypeContext *)context {
-  if(![context isValid]) {
+  if(!context.valid) {
     return nil;
   }
-  NSUInteger reserverd = MAX(1,[context.normalizedCommand length] / 4);
+  NSUInteger reserverd = MAX(1,context.normalizedCommand.length / 4);
   NSMutableArray *commands = [[NSMutableArray alloc] initWithCapacity:reserverd];
   NSMutableArray __block *commandRanges = [[NSMutableArray alloc] initWithCapacity:reserverd];
   NSRegularExpression *commandRegExp = [[NSRegularExpression alloc] initWithPattern:@"\\{[^\\{\\}]+\\}" options:NSRegularExpressionCaseInsensitive error:0];
   NSAssert(commandRegExp, @"RegExp is constant. Has to work all the time");
-  [commandRegExp enumerateMatchesInString:context.evaluatedCommand options:0 range:NSMakeRange(0, [context.evaluatedCommand length]) usingBlock:^(NSTextCheckingResult *result, NSMatchingFlags flags, BOOL *stop) {
+  [commandRegExp enumerateMatchesInString:context.evaluatedCommand options:0 range:NSMakeRange(0, context.evaluatedCommand.length) usingBlock:^(NSTextCheckingResult *result, NSMatchingFlags flags, BOOL *stop) {
     @autoreleasepool {
       [commandRanges addObject:[NSValue valueWithRange:result.range]];
     }
@@ -145,21 +140,29 @@ static CGKeyCode kMPFunctionKeyCodes[] = { kVK_F1, kVK_F2, kVK_F3, kVK_F4, kVK_F
     }
     lastLocation = commandRange.location + commandRange.length;
   }
-  /* Collect any part that isn't a command or if onyl paste is used */
-  if(lastLocation < [context.evaluatedCommand length]) {
-    /* We might have some dangling modifiers */
-    NSRange lastRange = NSMakeRange(lastLocation, [context.evaluatedCommand length] - lastLocation);
-    if(lastRange.length > 0) {
+  /* Collect last part that isn't a command */
+  if(lastLocation < context.evaluatedCommand.length) {
+    NSRange lastRange = NSMakeRange(lastLocation, context.evaluatedCommand.length - lastLocation);
+    if(lastRange.length <= 0) {
+      return commands;
+    }
+    /* We have modifiers */
+    if(0 != collectedModifers) {
       NSString *modifiedKey = [context.evaluatedCommand substringWithRange:NSMakeRange(lastLocation, 1)];
       MPAutotypeKeyPress *press = [[MPAutotypeKeyPress alloc] initWithModifierMask:collectedModifers character:modifiedKey];
       if(press) {
         [commands addObject:press];
       }
-      if(lastRange.length > 1) {
-        NSRange pasteRange = NSMakeRange(lastRange.location + 1, lastRange.length - 1);
-        NSString *pasteValue = [context.evaluatedCommand substringWithRange:pasteRange];
-        [self appendAppropriatePasteCommandForEntry:context.entry withContent:pasteValue toCommands:commands];
-      }
+      /* Update our states */
+      collectedModifers = 0;
+      lastLocation++;
+      lastRange = NSMakeRange(lastLocation, context.evaluatedCommand.length - lastLocation);
+    }
+    /* No modifiers, just paste the rest */
+    if(lastRange.length > 0) {
+      NSRange pasteRange = NSMakeRange(lastRange.location, lastRange.length);
+      NSString *pasteValue = [context.evaluatedCommand substringWithRange:pasteRange];
+      [self appendAppropriatePasteCommandForEntry:context.entry withContent:pasteValue toCommands:commands];
     }
   }
   return commands;
@@ -287,7 +290,7 @@ static CGKeyCode kMPFunctionKeyCodes[] = { kVK_F1, kVK_F2, kVK_F3, kVK_F4, kVK_F
   }
   // TODO: add {APPLICATION <appname>}
   /* Delay */
-  NSString *delayPattern = [[NSString alloc] initWithFormat:@"\\{(%@|%@|)[ |=]+([0-9])+\\}",
+  NSString *delayPattern = [[NSString alloc] initWithFormat:@"\\{(%@|%@)[ |=]+([0-9]+)\\}",
                             kKPKAutotypeDelay,
                             kKPKAutotypeVirtualKey/*,
                                                    kKPKAutotypeVirtualExtendedKey,

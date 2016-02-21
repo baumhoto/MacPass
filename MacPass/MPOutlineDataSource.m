@@ -24,11 +24,7 @@
 #import "MPDocument.h"
 #import "MPConstants.h"
 
-#import "KPKGroup.h"
-#import "KPKEntry.h"
-#import "KPKUTIs.h"
-
-#import "NSUUID+KeePassKit.h"
+#import "KeePassKit/KeePassKit.h"
 
 @interface MPOutlineDataSource ()
 
@@ -62,7 +58,7 @@
   NSDragOperation operationMask = NSDragOperationMove;
   /*
    If we can support copy on drag, this can be used
-   to optain the dragging modifier mask the user presses
+   to obtain the dragging modifier mask the user presses
    */
   BOOL localCopy = NO;
   if([info draggingSourceOperationMask] == NSDragOperationCopy) {
@@ -99,7 +95,7 @@
         validTarget &= index != NSOutlineViewDropOnItemIndex;
         validTarget &= index != [self.localDraggedGroup.parent.groups indexOfObject:self.localDraggedGroup];
       }
-      BOOL isAnchesor = [self.localDraggedGroup isAnchestorOfGroup:targetGroup];
+      BOOL isAnchesor = [self.localDraggedGroup isAnchestorOf:targetGroup];
       validTarget &= !isAnchesor;
     }
     else {
@@ -143,7 +139,7 @@
   KPKGroup *targetGroup = (KPKGroup *)targetItem;
   if(draggedGroup) {
     if(copyItem || (nil == self.localDraggedGroup) ) {
-      draggedGroup = [draggedGroup copyWithName:nil];
+      draggedGroup = [draggedGroup copyWithTitle:nil options:kKPKCopyOptionNone];
       [targetGroup addGroup:draggedGroup atIndex:index];
       [targetGroup.undoManager setActionName:NSLocalizedString(@"COPY_GROUP", "")];
       return YES;
@@ -159,13 +155,13 @@
   }
   else if(draggedEntry) {
     if(copyItem || (nil == self.localDraggedEntry)) {
-      draggedEntry = [draggedEntry copyWithTitle:nil];
-      [targetGroup addEntry:draggedEntry atIndex:index];
+      draggedEntry = [draggedEntry copyWithTitle:nil options:kKPKCopyOptionNone];
+      [targetGroup addEntry:draggedEntry];
       [targetGroup.undoManager setActionName:NSLocalizedString(@"COPY_ENTRY", "")];
       return YES;
     }
     else if(self.localDraggedEntry) {
-      [self.localDraggedEntry moveToGroup:targetGroup atIndex:index];
+      [self.localDraggedEntry moveToGroup:targetGroup];
       [self.localDraggedEntry.undoManager setActionName:NSLocalizedString(@"MOVE_ENTRY", "")];
       return YES;
     }

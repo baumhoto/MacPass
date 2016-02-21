@@ -8,7 +8,8 @@
 
 #import "MPSettingsHelper.h"
 #import "NSString+MPPasswordCreation.h"
-#import "MPEntryViewController.h" // Sort descriptors
+#import "NSString+MPHash.h"
+#import "MPEntrySearchContext.h"
 #import "DDHotKey+MacPassAdditions.h" // Default hotkey;
 
 NSString *const kMPSettingsKeyPasteboardClearTimeout                  = @"ClipboardClearTimeout";
@@ -16,9 +17,6 @@ NSString *const kMPSettingsKeyClearPasteboardOnQuit                   = @"ClearC
 NSString *const kMPSettingsKeyBrowserBundleId                         = @"BrowserBundleId";
 NSString *const kMPSettingsKeyOpenEmptyDatabaseOnLaunch               = @"OpenEmptyDatabaseOnLaunch";
 NSString *const kMPSettingsKeyReopenLastDatabaseOnLaunch              = @"ReopenLastDatabaseOnLaunch";
-NSString *const kMPSettingsKeyHttpPort                                = @"HttpPort";
-NSString *const kMPSettingsKeyEnableHttpServer                        = @"EnableHttpServer";
-NSString *const kMPSettingsKeyShowMenuItem                            = @"ShowMenuItem";
 NSString *const kMPSettingsKeyLockOnSleep                             = @"LockOnSleep";
 NSString *const kMPSettingsKeyIdleLockTimeOut                         = @"IdleLockTimeOut";
 NSString *const kMPSettingsKeyShowInspector                           = @"ShowInspector";
@@ -38,6 +36,7 @@ NSString *const kMPSettingsKeySendCommandForControlKey                = @"SendCo
 NSString *const kMPSettingsKeyEnableGlobalAutotype                    = @"EnableGlobalAutotype";
 NSString *const kMPSettingsKeyGlobalAutotypeKeyDataKey                = @"GlobalAutotypeKeyDataKey";
 NSString *const kMPSettingsKeyDefaultGlobalAutotypeSequence           = @"DefaultGlobalAutotypeSequence";
+NSString *const kMPSettingsKeyAutotypeMatchTitle                      = @"AutotypeMatchTitle";
 NSString *const kMPSettingsKeyAutotypeMatchURL                        = @"AutotypeMatchURL";
 NSString *const kMPSettingsKeyAutotypeMatchHost                       = @"AutotypeMatchHost";
 NSString *const kMPSettingsKeyAutotypeMatchTags                       = @"AutotypeMatchTags";
@@ -59,12 +58,18 @@ NSString *const kMPSettingsKeyPasswordDefaultsForEntry                = @"Passwo
 NSString *const kMPSettingsKeyDoubleClickURLAction                    = @"DoubleClickURLAction";
 NSString *const kMPSettingsKeyDoubleClickTitleAction                  = @"DoubleClickTitleAction";
 
+NSString *const kMPSettingsKeyLoadUnsecurePlugins                     = @"MPLoadUnsecurePlugins";
+
 /* Deprecated */
 NSString *const kMPDeprecatedSettingsKeyRememberKeyFilesForDatabases      = @"kMPSettingsKeyRememberKeyFilesForDatabases";
 NSString *const kMPDeprecatedSettingsKeyLastDatabasePath                  = @"MPLastDatabasePath";
 NSString *const kMPDeprecatedSettingsKeyDocumentsAutotypeFixNoteWasShown  = @"DocumentsAutotypeFixNoteWasShown";
 NSString *const kMPDeprecatedSettingsKeyDoubleClickURLToLaunch            = @"DoubleClickURLToLaunch";
 NSString *const kMPDeprecatedSettingsKeyEntrySearchFilterMode             = @"EntrySearchFilterMode";
+NSString *const kMPDeprecatedSettingsKeyHttpPort                          = @"HttpPort";
+NSString *const kMPDeprecatedSettingsKeyEnableHttpServer                  = @"EnableHttpServer";
+NSString *const kMPDeprecatedSettingsKeyShowMenuItem                      = @"ShowMenuItem";
+
 
 @implementation MPSettingsHelper
 
@@ -76,6 +81,7 @@ NSString *const kMPDeprecatedSettingsKeyEntrySearchFilterMode             = @"En
   [self _fixEntryTableSortDescriptors];
   [self _migrateURLDoubleClickPreferences];
   [self _migrateEntrySearchFlags];
+  [self _migrateRememberedKeyFiles];
   [self _removeDeprecatedValues];
 }
 
@@ -93,9 +99,6 @@ NSString *const kMPDeprecatedSettingsKeyEntrySearchFilterMode             = @"En
                          kMPSettingsKeyClearPasteboardOnQuit: @YES,
                          kMPSettingsKeyOpenEmptyDatabaseOnLaunch: @NO,
                          kMPSettingsKeyReopenLastDatabaseOnLaunch: @YES,
-                         kMPSettingsKeyHttpPort: @19455,
-                         kMPSettingsKeyEnableHttpServer: @NO,
-                         kMPSettingsKeyShowMenuItem: @YES,
                          kMPSettingsKeyLockOnSleep: @YES,
                          kMPSettingsKeyIdleLockTimeOut: @0, // 5 minutes
                          kMPSettingsKeyLegacyHideNotes: @NO,
@@ -108,6 +111,7 @@ NSString *const kMPDeprecatedSettingsKeyEntrySearchFilterMode             = @"En
                          kMPSettingsKeyEnableGlobalAutotype: @NO,
                          kMPSettingsKeyGlobalAutotypeKeyDataKey: [[DDHotKey defaultHotKey] keyData],
                          kMPSettingsKeyDefaultGlobalAutotypeSequence: @"{USERNAME}{TAB}{PASSWORD}{ENTER}",
+                         kMPSettingsKeyAutotypeMatchTitle: @YES,
                          kMPSettingsKeyAutotypeMatchURL: @NO,
                          kMPSettingsKeyAutotypeMatchHost: @NO,
                          kMPSettingsKeyAutotypeMatchTags: @NO,
@@ -119,7 +123,8 @@ NSString *const kMPDeprecatedSettingsKeyEntrySearchFilterMode             = @"En
                          kMPSettingsKeyPasswordUseCustomString: @NO,
                          kMPSettingsKeyPasswordCustomString: @"",
                          kMPSettingsKeyDoubleClickURLAction: @(MPDoubleClickURLActionCopy),
-                         kMPSettingsKeyDoubleClickTitleAction: @(MPDoubleClickTitleActionInspect)
+                         kMPSettingsKeyDoubleClickTitleAction: @(MPDoubleClickTitleActionInspect),
+                         kMPSettingsKeyLoadUnsecurePlugins: @NO
                          };
   });
   return standardDefaults;
@@ -133,7 +138,12 @@ NSString *const kMPDeprecatedSettingsKeyEntrySearchFilterMode             = @"En
                             kMPDeprecatedSettingsKeyLastDatabasePath,
                             kMPDeprecatedSettingsKeyDocumentsAutotypeFixNoteWasShown,
                             kMPDeprecatedSettingsKeyDoubleClickURLToLaunch,
-                            kMPDeprecatedSettingsKeyEntrySearchFilterMode];
+                            kMPDeprecatedSettingsKeyEntrySearchFilterMode,
+                            /* Moved to KeePassHttp Plugin */
+                            kMPDeprecatedSettingsKeyHttpPort,
+                            kMPDeprecatedSettingsKeyEnableHttpServer,
+                            kMPDeprecatedSettingsKeyShowMenuItem
+                            ];
   });
   return deprecatedSettings;
 }
@@ -150,6 +160,10 @@ NSString *const kMPDeprecatedSettingsKeyEntrySearchFilterMode             = @"En
   /*
    MacPass < 0.4 did use compare: for the entry table view,
    this was changed in 0.4 to localizedCaseInsensitiveCompare:
+   
+   MacPass < 0.5.2 did use parent.name for group names,
+   this was changed in 0.6. to parent.title
+   
    */
   NSData *descriptorData = [[NSUserDefaults standardUserDefaults] dataForKey:kMPSettingsKeyEntryTableSortDescriptors];
   if(!descriptorData) {
@@ -158,7 +172,10 @@ NSString *const kMPDeprecatedSettingsKeyEntrySearchFilterMode             = @"En
   NSArray *sortDescriptors = [NSUnarchiver unarchiveObjectWithData:descriptorData];
   
   for(NSSortDescriptor *descriptor in sortDescriptors) {
-    if([descriptor selector] == @selector(compare:) || [[descriptor key] isEqualToString:[MPEntryViewController timeInfoModificationTimeKeyPath]] ) {
+    /* Brute force, just kill the settings if they might cause trouble */
+    if(descriptor.selector == @selector(compare:)
+       || [descriptor.key isEqualToString:@"timeInfo.modificationDate"]
+       || [descriptor.key isEqualToString:@"parent.name"] ) {
       [[NSUserDefaults standardUserDefaults] removeObjectForKey:kMPSettingsKeyEntryTableSortDescriptors];
       break;
     }
@@ -174,12 +191,32 @@ NSString *const kMPDeprecatedSettingsKeyEntrySearchFilterMode             = @"En
 }
 
 + (void)_migrateEntrySearchFlags {
+  /* Entry filters are now stored as archivd search context not just flags */
   NSInteger flags = [[NSUserDefaults standardUserDefaults] integerForKey:kMPDeprecatedSettingsKeyEntrySearchFilterMode];
   if(flags != 0) {
     MPEntrySearchContext *context = [[MPEntrySearchContext alloc] initWithString:nil flags:flags];
     NSData *contextData = [NSKeyedArchiver archivedDataWithRootObject:context];
     [[NSUserDefaults standardUserDefaults] setObject:contextData forKey:kMPSettingsKeyEntrySearchFilterContext];
   }
+}
+
++ (void)_migrateRememberedKeyFiles {
+  /*
+   Database file paths was stored as plain text in keyfile mapping.
+   We only need to store the key file ulr in plain text, thus hashing the path is sufficent
+   */
+  NSDictionary<NSString *, NSString *> *plainTextDict = [[NSUserDefaults standardUserDefaults] dictionaryForKey:kMPSettingsKeyRememeberdKeysForDatabases];
+  if(!plainTextDict) {
+    return;
+  }
+  NSMutableDictionary *hashedDict = [[NSMutableDictionary alloc] initWithCapacity:plainTextDict.count];
+  for(NSString *key in plainTextDict) {
+    NSString *digest = key.sha1HexDigest;
+    if(digest) {
+      hashedDict[key.sha1HexDigest] = plainTextDict[key];
+    }
+  }
+  [[NSUserDefaults standardUserDefaults] setObject:hashedDict forKey:kMPSettingsKeyRememeberdKeysForDatabases];
 }
 
 @end

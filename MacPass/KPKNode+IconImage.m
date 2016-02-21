@@ -8,11 +8,7 @@
 
 #import "KPKNode+IconImage.h"
 
-#import "KPKIcon.h"
-#import "KPKGroup.h"
-#import "KPKTree.h"
-#import "KPKMetaData.h"
-#import "KPKTimeInfo.h"
+#import "KeePassKit/KeePassKit.h"
 
 #import "MPIconHelper.h"
 
@@ -38,7 +34,7 @@
   }
   
   if(self.iconUUID) {
-    KPKIcon *icon = [self.tree.metaData findIcon:self.iconUUID];
+    KPKIcon *icon;// = [self.tree.metaData findIcon:self.iconUUID];
     if(icon && icon.image) {
       return icon.image;
     }

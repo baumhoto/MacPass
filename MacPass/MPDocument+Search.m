@@ -6,13 +6,10 @@
 //  Copyright (c) 2014 HicknHack Software GmbH. All rights reserved.
 //
 
-#import "MPDocument+Search.h"
 #import "MPDocument.h"
 #import "MPDocumentWindowController.h"
 
-#import "KPKGroup.h"
-#import "KPKEntry.h"
-#import "KPKTimeInfo.h"
+#import "KeePassKit/KeePassKit.h"
 
 #import "MPFlagsHelper.h"
 
@@ -114,12 +111,11 @@ NSString *const kMPDocumentSearchResultsKey           = @"kMPDocumentSearchResul
 - (NSArray *)_findEntriesMatchingCurrentSearch {
   /* Filter double passwords */
   if(MPIsFlagSetInOptions(MPEntrySearchDoublePasswords, self.searchContext.searchFlags)) {
-    __block NSMutableDictionary *passwordToEntryMap = [[NSMutableDictionary alloc] initWithCapacity:100];
+    NSMutableDictionary *passwordToEntryMap = [[NSMutableDictionary alloc] initWithCapacity:100];
     /* Build up a usage map */
-    [[self.root searchableChildEntries] enumerateObjectsUsingBlock:^(id obj, NSUInteger idx, BOOL *stop) {
-      KPKEntry *entry = obj;
+    for(KPKEntry *entry in self.root.searchableChildEntries) {
       /* skip entries without passwords */
-      if([entry.password length] > 0) {
+      if(entry.password.length > 0) {
         NSMutableSet *entrySet = passwordToEntryMap[entry.password];
         if(entrySet) {
           [entrySet addObject:entry];
@@ -128,15 +124,15 @@ NSString *const kMPDocumentSearchResultsKey           = @"kMPDocumentSearchResul
           passwordToEntryMap[entry.password] = [NSMutableSet setWithObject:entry];
         }
       }
-    }];
+    }
     /* check for usage count */
-    __block NSMutableArray *doublePasswords = [[NSMutableArray alloc] init];
-    [[passwordToEntryMap allKeys] enumerateObjectsUsingBlock:^(id obj, NSUInteger idx, BOOL *stop) {
-      NSSet *entrySet = passwordToEntryMap[obj];
-      if([entrySet count] > 1) {
-        [doublePasswords addObjectsFromArray:[entrySet allObjects]];
+    NSMutableArray *doublePasswords = [[NSMutableArray alloc] init];
+    for(NSString *password in passwordToEntryMap.allKeys) {
+      NSSet *entrySet = passwordToEntryMap[password];
+      if(entrySet.count > 1) {
+        [doublePasswords addObjectsFromArray:entrySet.allObjects];
       }
-    }];
+    }
     return doublePasswords;
   }
   if(MPIsFlagSetInOptions(MPEntrySearchExpiredEntries, self.searchContext.searchFlags)) {

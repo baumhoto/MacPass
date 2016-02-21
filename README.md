@@ -10,19 +10,26 @@ The Project is in heavy development. Beware that I'm going to shift things aroun
 
 ##Download
 
-Since Github now provides a release feature, I'm trying to upload binaries for all the tags I create along the way.
-Use it with caution, it's unfinished. Really!
+I'm trying to upload binaries for all the tags I create along the way. Use it with caution, it's unfinished. Really!
 
 All releases can be found at [Github](https://github.com/mstarke/MacPass/releases).
 
-If you want to live dangerously and want to take a look at the master:
+##How to Build
 
-    git clone https://github.com/mstarke/MacPass
-    cd MacPass
-    git submodule init
-    git submodule update
+* Fetch the source of MacPass
+```bash
+git clone https://github.com/mstarke/MacPass
+cd MacPass
+git submodule update --init --recursive
+```
+* Install [Carthage](https://github.com/Carthage/Carthage#installing-carthage)
+* Install all Dependencies
+```bash
+carthage bootstrap --platform Mac
+```
+After that you can build and run in Xcode. The following command will build and make the application available through Spotlight. If you run into signing issues take a look at [Issue #92](https://github.com/mstarke/MacPass/issues/92)
 
-After that you can build and run in Xcode. If you run into signing issues take a look at [Issue #92](https://github.com/mstarke/MacPass/issues/92)
+    xcodebuild -scheme MacPass -target MacPass -configuration Release
 
 There have been some changes in the submodule urls. Please consider re-syncing and initalizing all submodules.
 
@@ -31,14 +38,8 @@ There have been some changes in the submodule urls. Please consider re-syncing a
 
 ##Known Major Issues
 
-* Binary releases (0.2.x - 0.3.x):
-  * KDBX DeletedObjects are stripped on save. This will break synchronisation features!
-* Binary releases (0.4.x):
-  * Default Autotype Sequences will get stored although they shouldn't be stored
-  * Default Autotype sequence is wrong `{TAB}{USERNAME}{TAB}{PASSWORD}{ENTER}` instead of `{USERNAME}{TAB}{PASSWORD}{ENTER}`
-  * Forced and Recomended database key change intervals are wrongfully initalized with 0. This has the nasty side effect, that 0.5 or Keepass under Windows complains to you about it all the time. (Issue [#269](https://github.com/mstarke/MacPass/issues/269) and [#276](https://github.com/mstarke/MacPass/issues/276))
 * Binary releases (0.5.x):
-  * KDBX History is only preseverd. Editing doesn't create new history entries
+  * KDBX History is only preserved. Editing doesn't create new history entries
 
 ## Help
 
@@ -49,7 +50,6 @@ Another place to look is the IRC channel [#macpass](irc://irc.freenode.org/macpa
 ##System Requirement
 
 The minimum OS X version required for MacPass is currently 10.8 Mountain Lion.
-Since 10.9 Mavericks is a free upgrade I have no plans to support 10.7 Lion.
 
 ##Status
 
@@ -63,14 +63,11 @@ More Screenshots in the [Wiki](https://github.com/mstarke/MacPass/wiki/Screensho
 
 ##Alternatives
 
-[KeePassX](http://www.keepassx.org) is a Qt based KeePass port. The stable 0.4.3 release only supports the version 1 format. The Alpha can read database version 1 and 2 and write version 2 containers rather nicely.
-It's in active development and open source. Since Alpha 4 the random password generator has found it's way back into the Alpha releases, version 0.4.3 includes one as well. The Alpha fully supports all database 2 features and should be stable enough for daily usage. It can import version 1 into a version 2 file but is unable to natively write version 1 files.
+[KeePassX](http://www.keepassx.org) is a Qt based KeePass port. The stable 0.4.3 release only supports the version 1 format. The Beta can read database version 1 and 2 and write version 2 containers rather nicely.
+It's in active development and open source. The Beta fully supports all database 2 features and should be stable enough for daily usage. It can import version 1 into a version 2 file but is unable to natively write version 1 files.
 
 [KyPass Companion](http://www.kyuran.be/logiciels/kypass4mac/) is a native Cocoa port and offers KeePassHttp compatiblity.
 Should be able to read and write database version 1 and 2. It is closed source and currently available in the Mac App Store. It's rather expensive considering the bugs and missing features. Based on the user reviews it should work. Not all version 2 features are supported. It is unable to convert between database versions.
-
-[S3crets](http://s3crets.com/en/help/) native Cocoa Port with a different approach to displaying the database fully inside a tree.
-It is able to read and write database version 1 and 2. Not all database features are fully supported.
 
 ##License
 
@@ -91,7 +88,16 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+## App Store
+
+Due to being lincensed under GPLv3 it's not possible to publish a version of MacPass on the App Store.
+For further details, take a look at the [explanation](https://www.fsf.org/news/2010-05-app-store-compliance) of the Free Software Foundation.
+
 ##Contributions
+
+The following list might not be complete, please refer to [merged Pull Requests](https://github.com/mstarke/MacPass/pulls?utf8=✓&q=is%3Apr+is%3Aclosed+is%3Amerged) on GitHub for more details.
+
+### Art
 
 [Iiro Jäppinen](https://iiro.jappinen.me) MacPass icon
 
@@ -99,15 +105,21 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 [Joanna Olsen](https://github.com/JoannaOlsen) Database Icons
 
-[Jellyfrog](https://github.com/Jellyfrog) Asset file size optimization
-
-[Jannick Hemelhof](https://github.com/clone1612) Dutch localization
+### Localization
 
 [Gil André](mailto:gil@panix.com) and [Michel Bibal](https://github.com/MBibal) French localization
+
+[Jannick Hemelhof](https://github.com/clone1612) Dutch localization
 
 [Benjamin Steinwender](https://github.com/auge) German localization
 
 [Zhao Peng](patchao2000@gmail.com) Simplified Chinese localization
+
+[Alex Petkevich](alex@mrdoggy.info) Russion localization
+
+### Other
+
+[Jellyfrog](https://github.com/Jellyfrog) Asset file size optimization
 
 [Nathaniel Madura](mailto:nmadura@umich.edu) Refacotrings, first create Database 
 
@@ -131,19 +143,23 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 [Dennis Bolio](https://github.com/dennisbolio) Fixes issues with icon selection
 
+[Mario Sangiorgio](mariosangiorgio@gmail.com) Improved password generation, Improved English localization
+
+[Michael Belz](https://github.com/sub0ne) Fixed MacPass not opening any window, when lastly opened Database is missing.
+
 ##Copyright
 
 This Project is based upon the following work:
 
-[KissXML](https://github.com/robbiehanson/KissXML) Copyright 2012 Robbie Hanson. All rights reserved.
+[KeePassKit](https://github.com/mstarke/KeePassKit) Copyright 2012 HicknHack Software GmbH. All rights reserved.
+
+[HNHUi](https://github.com/mstarke/HNHUi) Copyright 2012 HicknHack Software GmbH. All rights reserved.
 
 [MiniKeePass](https://github.com/MiniKeePass/MiniKeePass) Copyright 2011 Jason Rush and John Flanagan. All rights reserved.
 
 [KeePass Database Library](https://github.com/mpowrie/KeePassLib) Copyright 2010 Qiang Yu. All rights reserved.
 
 [PXSourceList](https://github.com/Perspx/PXSourceList) Copyright 2011, Alex Rozanski. All rights reserved.
-
-[CocoaHTTPServer](https://github.com/robbiehanson/CocoaHTTPServer ) Copyright 2011, Deusty, LLC. All rights reserved.
 
 [KSPasswordField](https://github.com/karelia/SecurityInterface) Copyright 2012 Mike Abdullah, Karelia Software. All rights reserved.
 
@@ -156,6 +172,8 @@ This Project is based upon the following work:
 [MJGFoundation](https://github.com/mstarke/MJGFoundation) Licensed under BSD 2-Clause License. Copyright 2011 [Matt Galloway](http://www.galloway.me.uk/). All rights reserved.
 
 [ShortcutRecorder](http://wafflesoftware.net/shortcut/) Copyright 2006—2013 all [Shortcut Recorder contributors](http://wafflesoftware.net/shortcut/contributors/) 
+
+[NSBundle Codesignature Check](http://jedda.me/2012/03/verifying-plugin-bundles-using-code-signing/) Copyright 2014 [Jedda Wignall](http://jedda.me). All rights reserved.
 
 See submodules for additional Licenses
 

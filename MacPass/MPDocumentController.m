@@ -10,9 +10,9 @@
 #import "MPDocumentController.h"
 #import "MPConstants.h"
 
-#import "HNHCommon.h"
+#import "HNHUi/HNHUi.h"
 
-#import "KPKFormat.h"
+#import "KeePassKit/KeePassKit.h"
 #import "KPKFormat+MPUTIDetection.h"
 
 @interface MPDocumentController ()
@@ -43,7 +43,7 @@
 
 - (void)toggleAllowAllFiles:(id)sender {
   NSButton *button = (NSButton *)sender;
-  BOOL allowAllFiles = HNHBoolForState(button.state);
+  BOOL allowAllFiles = HNHUIBoolForState(button.state);
   /* Toggle hidden to force a refresh */
   self.openPanel.showsHiddenFiles = !self.openPanel.showsHiddenFiles;
   self.openPanel.allowedFileTypes = allowAllFiles ? nil : @[MPLegacyDocumentUTI, MPXMLDocumentUTI];

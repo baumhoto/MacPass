@@ -29,8 +29,7 @@
 #import "MPActionHelper.h"
 #import "MPContextMenuHelper.h"
 
-#import "KPKGroup.h"
-#import "KPKTree.h"
+#import "KeePassKit/KeePassKit.h"
 
 NSString *const _MPOutlineMenuDefault = @"Default";
 NSString *const _MPOutlineMenuTrash = @"Trash";
@@ -62,13 +61,13 @@ NSString *const _MPOutlineMenuTemplate = @"Template";
     if(group && document.root == group ) {
 
     }
-    if(group && document.trash == group) {
+    if(group.isTrash) {
       [self _updateTrashMenu:menu];
     }
     else if( group && document.templates == group) {
       [self _updateTemplateMenu:menu];
     }
-    else if([document isItemTrashed:group]) {
+    else if(group.isTrashed) {
       [self _updateTrashItemMenu:menu];
     }
     else {
