@@ -27,7 +27,7 @@
 
 #import "KeePassKit/KeePassKit.h"
 
-#import "NSString+Commands.h"
+//#import "NSString+Commands.h"
 
 
 typedef NS_ENUM(NSUInteger, MPAlertContext) {
@@ -195,7 +195,7 @@ typedef void (^MPPasswordChangedBlock)(BOOL didChangePassword);
 -(BOOL)control:(NSControl*)control textView:(NSTextView*)textView doCommandBySelector:(SEL)commandSelector {
   
   BOOL result = NO;
-  if(commandSelector == @selector(moveDown:)) {
+  if(commandSelector == @selector(moveDown:) || commandSelector == @selector(insertNewline:)) {
     [[self.searchField window] makeKeyAndOrderFront:self];
     NSIndexSet *indexSet = [NSIndexSet indexSetWithIndex:0];
     [[_entryViewController entryTable] selectRowIndexes:indexSet byExtendingSelection:NO];
